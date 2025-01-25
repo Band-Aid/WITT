@@ -1,0 +1,34 @@
+{
+    "manifest_version": 3,
+    "name": "Where is that tag?",
+    "version": "1.0",
+    "description": "This extension helps you find the Pendo tag on a page",
+    "permissions": [
+      "activeTab",
+      "scripting",
+      "tabs",
+      "webRequest",
+      "downloads",
+      "storage",
+      "webNavigation"
+    ],
+    "host_permissions": ["<all_urls>"],
+    "background": {
+      "matches": ["https://app.pendo.io/s/*/pages/*", "https://app.pendo.io/s/*/features/*"],
+      "service_worker": "background.js"
+    },
+    "content_scripts": [
+      {
+        "matches": ["https://app.pendo.io/s/*/pages/*", "https://app.pendo.io/s/*/features/*"],
+        "js": ["content.js"]
+      },
+      {
+        "matches": ["https://app.pendo.io/in-app-designer/*"],
+        "js": ["iframe.js"],
+        "all_frames": true
+      }
+    ],
+    "action": {
+      "default_popup": "popup.html"
+    }
+  }
