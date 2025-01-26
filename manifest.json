@@ -23,7 +23,7 @@
         "js": ["content.js"]
       },
       {
-        "matches": ["https://app.pendo.io/in-app-designer/*"],
+        "matches": ["https://app.pendo.io/in-app-designer/latest/app/login"],
         "js": ["iframe.js"],
         "all_frames": true
       }
