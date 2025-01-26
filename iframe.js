@@ -7,13 +7,13 @@ function waitForElement(selector, callback) {
 
 function attachListeners() {
     waitForElement('.tagged-page-view [data-cy="done-button"]', (tagPageBtn) => {
-        if (!tagFeatureBtn.classList.contains('listener-attached')) {
+        if (!tagPageBtn.classList.contains('listener-attached')) {
             console.log('Tag Page button found!');
             tagPageBtn.addEventListener('click', () => {
                 console.log('Tag Page button clicked!');
                 chrome.runtime.sendMessage({ action: 'tagPageClicked' });
             });
-            tagFeatureBtn.classList.add('listener-attached');
+            tagPageBtn.classList.add('listener-attached');
         }
     });
 
