@@ -10,7 +10,8 @@
       "webRequest",
       "downloads",
       "storage",
-      "webNavigation"
+      "webNavigation",
+      "unlimitedStorage"
     ],
     "host_permissions": ["<all_urls>"],
     "background": {
@@ -19,11 +20,7 @@
     },
     "content_scripts": [
       {
-        "matches": ["https://app.pendo.io/s/*/pages/*", "https://app.pendo.io/s/*/features/*"],
-        "js": ["content.js"]
-      },
-      {
-        "matches": ["https://app.pendo.io/in-app-designer/*"],
+        "matches": ["https://app.pendo.io/in-app-designer/latest/*"],
         "js": ["iframe.js"],
         "all_frames": true
       }
