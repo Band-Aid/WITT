@@ -1,6 +1,7 @@
 Add a screenshot to Pendo tag pages/features
 
-Reaload on feature/page details once to add screenshot
+Tagged pages and features in VDS will capture a screenshot.
 
+When naviagating to page and features details page a screenshot will be appended to the header.
 
-![image](https://daichi.box.com/shared/static/pczc7zez4j2dh0rype0akvrg2akz586h.png)
+Screenshots are saved in localstorage. Deleting the extension will flush all local storage.
