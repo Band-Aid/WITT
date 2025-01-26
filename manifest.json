@@ -20,7 +20,11 @@
     },
     "content_scripts": [
       {
-        "matches": ["https://app.pendo.io/in-app-designer/latest/*"],
+        "matches": ["https://app.pendo.io/s/*/pages/*", "https://app.pendo.io/s/*/features/*"],
+        "js": ["content.js"]
+      },
+      {
+        "matches": ["https://app.pendo.io/in-app-designer/latest/app/login"],
         "js": ["iframe.js"],
         "all_frames": true
       }
