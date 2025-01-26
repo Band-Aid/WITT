@@ -10,7 +10,8 @@
       "webRequest",
       "downloads",
       "storage",
-      "webNavigation"
+      "webNavigation",
+      "unlimitedStorage"
     ],
     "host_permissions": ["<all_urls>"],
     "background": {

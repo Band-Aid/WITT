@@ -83,6 +83,20 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
+function injectContentScriptIfNeeded(tabId, callback) {
+  chrome.tabs.sendMessage(tabId, { action: 'ping' }, (response) => {
+    if (chrome.runtime.lastError || !response || response.status !== 'ready') {
+      chrome.scripting.executeScript({
+        target: { tabId: tabId },
+        files: ['content.js']
+      }, callback);
+    } else {
+      callback();
+    }
+  });
+}
+
+
 chrome.webNavigation.onCompleted.addListener((details) => {
   console.log('Navigation completed:', details.url);
   const url = new URL(details.url);
@@ -91,18 +105,22 @@ chrome.webNavigation.onCompleted.addListener((details) => {
 
   if (pagesPattern.test(url.href)) {
     console.log('Page loaded:', details.url);
-    chrome.tabs.sendMessage(details.tabId, {
-      action: 'handlePageLoaded',
-      url: details.url
+    injectContentScriptIfNeeded(details.tabId, () => {
+      chrome.tabs.sendMessage(details.tabId, {
+        action: 'handlePageLoaded',
+        url: details.url
+      });
     });
   } else if (featuresPattern.test(url.href)) {
     console.log('Feature loaded:', details.url);
-    chrome.tabs.sendMessage(details.tabId, {
-      action: 'handleFeatureLoaded',
-      url: details.url
+    injectContentScriptIfNeeded(details.tabId, () => {
+      chrome.tabs.sendMessage(details.tabId, {
+        action: 'handleFeatureLoaded',
+        url: details.url
+      });
     });
   }
-});
+}, { url: [{ hostEquals: 'app.pendo.io' }] });
 
 chrome.webNavigation.onHistoryStateUpdated.addListener((details) => {
   console.log('History state updated:', details.url);
@@ -112,24 +130,19 @@ chrome.webNavigation.onHistoryStateUpdated.addListener((details) => {
   
   if (pagesPattern.test(url.href)) {
     console.log('Page loaded:', details.url);
-    try {
+    injectContentScriptIfNeeded(details.tabId, () => {
       chrome.tabs.sendMessage(details.tabId, {
         action: 'handlePageLoaded',
         url: details.url
       });
-    } catch (error) {
-      console.error('Error sending message to tab:', error);
-    }
-
+    });
   } else if (featuresPattern.test(url.href)) {
     console.log('Feature loaded:', details.url);
-    try {
+    injectContentScriptIfNeeded(details.tabId, () => {
       chrome.tabs.sendMessage(details.tabId, {
         action: 'handleFeatureLoaded',
         url: details.url
       });
-    } catch (error) { 
-      console.error('Error sending message to tab:', error);
-    }
+    });
   }
 });
