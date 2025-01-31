@@ -13,7 +13,7 @@ function attachListeners() {
                 console.log('Tag Page button clicked!');
                 chrome.runtime.sendMessage({ action: 'tagPageClicked' });
             });
-            tagFeatureBtn.classList.add('listener-attached');
+            tagPageBtn.classList.add('listener-attached');
         }
     });
 
