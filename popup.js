@@ -61,23 +61,20 @@ document.addEventListener("DOMContentLoaded", function () {
             tdKey.id = key;
             img.src = value;
             img.alt = key;
-            img.style.maxWidth = '500px'; // Adjust as needed
+            img.style.maxWidth = '500px'; // Limit the image size
             tdValue.appendChild(img);
             button.textContent = 'Delete';
             button.addEventListener('click', () => {
                 chrome.storage.local.remove(key, () => {
-                    console.log('Item deleted:', key);
                     location.reload(); // Reload to reflect the changes
                 });
             });
             tdButton.appendChild(button);
-
             tr.appendChild(tdKey);
             tr.appendChild(tdValue);
             tr.appendChild(tdButton);
             tbody.appendChild(tr);
         }
-
         table.appendChild(tbody);
         document.body.appendChild(table);
     });
