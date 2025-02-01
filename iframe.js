@@ -35,7 +35,6 @@ console.log(window.location.href);
 
 // Create a MutationObserver to monitor changes in the DOM
 const observer = new MutationObserver((mutations) => {
-
     mutations.forEach((mutation) => {
         if (mutation.addedNodes.length || mutation.removedNodes.length) {
             mutation.addedNodes.forEach((node) => {

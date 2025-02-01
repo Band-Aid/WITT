@@ -53,19 +53,28 @@ document.addEventListener("DOMContentLoaded", function () {
             const tr = document.createElement('tr');
             const tdKey = document.createElement('td');
             const tdValue = document.createElement('td');
+            const tdButton = document.createElement('td');
+            const button = document.createElement('button');
             const img = document.createElement('img');
 
             tdKey.textContent = key;
+            tdKey.id = key;
             img.src = value;
             img.alt = key;
-            img.style.maxWidth = '500px'; // Adjust as needed
+            img.style.maxWidth = '500px'; // Limit the image size
             tdValue.appendChild(img);
-
+            button.textContent = 'Delete';
+            button.addEventListener('click', () => {
+                chrome.storage.local.remove(key, () => {
+                    location.reload(); // Reload to reflect the changes
+                });
+            });
+            tdButton.appendChild(button);
             tr.appendChild(tdKey);
             tr.appendChild(tdValue);
+            tr.appendChild(tdButton);
             tbody.appendChild(tr);
         }
-
         table.appendChild(tbody);
         document.body.appendChild(table);
     });

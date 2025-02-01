@@ -98,7 +98,7 @@ function injectContentScriptIfNeeded(tabId, callback) {
 
 
 chrome.webNavigation.onCompleted.addListener((details) => {
-  console.log('Navigation completed:', details.url);
+  //console.log('Navigation completed:', details.url);
   const url = new URL(details.url);
   const pagesPattern = /^https:\/\/app\.pendo\.io\/s\/[^\/]+\/pages\/[^\/]+/;
   const featuresPattern = /^https:\/\/app\.pendo\.io\/s\/[^\/]+\/features\/[^\/]+/;
