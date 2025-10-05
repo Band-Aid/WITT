@@ -24,7 +24,7 @@
         "js": ["content.js"]
       },
       {
-        "matches": ["https://app.pendo.io/in-app-designer/latest/app/login"],
+        "matches": ["https://app.pendo.io/in-app-designer/latest/app/*"],
         "js": ["iframe.js"],
         "all_frames": true
       }
