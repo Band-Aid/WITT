@@ -33,7 +33,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     };
     chrome.webRequest.onBeforeRequest.addListener(
       featureListener,
-      { urls: ["https://app.pendo.io/api/s/*/page/*/apply", "https://app.pendo.io/api/s/*/feature/*/apply"] }
+      { urls: [
+          "https://app.pendo.io/api/s/*/page/*/apply",
+          "https://app.pendo.io/api/s/*/feature/*/apply",
+          "https://app.jpn.pendo.io/api/s/*/page/*/apply",
+          "https://app.jpn.pendo.io/api/s/*/feature/*/apply"
+        ] }
     );
 
   } else if (message.action === 'tagPageClicked') {
@@ -54,7 +59,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     };
     chrome.webRequest.onBeforeRequest.addListener(
       pageListener,
-      { urls: ["https://app.pendo.io/api/s/*/page/*/apply", "https://app.pendo.io/api/s/*/feature/*/apply"] }
+      { urls: [
+          "https://app.pendo.io/api/s/*/page/*/apply",
+          "https://app.pendo.io/api/s/*/feature/*/apply",
+          "https://app.jpn.pendo.io/api/s/*/page/*/apply",
+          "https://app.jpn.pendo.io/api/s/*/feature/*/apply"
+        ] }
     );
   } else if (message.action === 'pageFeatureLoaded') {
     console.log('Page/Feature loaded!');
@@ -104,8 +114,8 @@ function injectContentScriptIfNeeded(tabId, callback) {
 chrome.webNavigation.onCompleted.addListener((details) => {
   //console.log('Navigation completed:', details.url);
   const url = new URL(details.url);
-  const pagesPattern = /^https:\/\/app\.pendo\.io\/s\/[^\/]+\/pages\/[^\/]+/;
-  const featuresPattern = /^https:\/\/app\.pendo\.io\/s\/[^\/]+\/features\/[^\/]+/;
+  const pagesPattern = /^https:\/\/(?:app|app\.jpn)\.pendo\.io\/s\/[^\/]+\/pages\/[^\/]+/;
+  const featuresPattern = /^https:\/\/(?:app|app\.jpn)\.pendo\.io\/s\/[^\/]+\/features\/[^\/]+/;
 
   if (pagesPattern.test(url.href)) {
     console.log('Page loaded:', details.url);
@@ -130,13 +140,13 @@ chrome.webNavigation.onCompleted.addListener((details) => {
       });
     }
   }
-}, { url: [{ hostEquals: 'app.pendo.io' }] });
+}, { url: [{ hostEquals: 'app.pendo.io' }, { hostEquals: 'app.jpn.pendo.io' }] });
 
 chrome.webNavigation.onHistoryStateUpdated.addListener((details) => {
   console.log('History state updated:', details.url);
   const url = new URL(details.url);
-  const pagesPattern = /^https:\/\/app\.pendo\.io\/s\/[^\/]+\/pages\/[^\/]+/;
-  const featuresPattern = /^https:\/\/app\.pendo\.io\/s\/[^\/]+\/features\/[^\/]+/;
+  const pagesPattern = /^https:\/\/(?:app|app\.jpn)\.pendo\.io\/s\/[^\/]+\/pages\/[^\/]+/;
+  const featuresPattern = /^https:\/\/(?:app|app\.jpn)\.pendo\.io\/s\/[^\/]+\/features\/[^\/]+/;
   
   if (pagesPattern.test(url.href)) {
     console.log('Page loaded:', details.url);

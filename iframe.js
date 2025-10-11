@@ -27,6 +27,17 @@ function attachListeners() {
             tagFeatureBtn.classList.add('listener-attached');
         }
     });
+
+    waitForElement('[type="feature"] [pendo-analytics="components:button:save-changes"]', (saveFeatureBtn) => {
+        if (!saveFeatureBtn.classList.contains('listener-attached')) {
+            console.log('Save Feature button found!');
+            saveFeatureBtn.addEventListener('click', () => {
+                console.log('Save Feature button clicked!');
+                chrome.runtime.sendMessage({ action: 'tagFeatureClicked' });
+            });
+            saveFeatureBtn.classList.add('listener-attached');
+        }
+    });
 }
 
 // Initial attachment of listeners
@@ -38,7 +49,7 @@ const observer = new MutationObserver((mutations) => {
     mutations.forEach((mutation) => {
         if (mutation.addedNodes.length || mutation.removedNodes.length) {
             mutation.addedNodes.forEach((node) => {
-                if (node.nodeType === 1 && node.querySelector('[pendo-analytics="components:button:save"]')) {
+                if (node.nodeType === 1 && (node.querySelector('[pendo-analytics="components:button:save"]') || node.querySelector('[pendo-analytics="components:button:save-changes"]'))) {
                    attachListeners();
                 }
             });

@@ -15,16 +15,29 @@
     ],
     "host_permissions": ["<all_urls>"],
     "background": {
-      "matches": ["https://app.pendo.io/s/*/pages/*", "https://app.pendo.io/s/*/features/*"],
+      "matches": [
+        "https://app.pendo.io/s/*/pages/*",
+        "https://app.pendo.io/s/*/features/*",
+        "https://app.jpn.pendo.io/s/*/pages/*",
+        "https://app.jpn.pendo.io/s/*/features/*"
+      ],
       "service_worker": "background.js"
     },
     "content_scripts": [
       {
-        "matches": ["https://app.pendo.io/s/*/pages/*", "https://app.pendo.io/s/*/features/*"],
+        "matches": [
+          "https://app.pendo.io/s/*/pages/*",
+          "https://app.pendo.io/s/*/features/*",
+          "https://app.jpn.pendo.io/s/*/pages/*",
+          "https://app.jpn.pendo.io/s/*/features/*"
+        ],
         "js": ["content.js"]
       },
       {
-        "matches": ["https://app.pendo.io/in-app-designer/latest/app/*"],
+        "matches": [
+          "https://app.pendo.io/in-app-designer/latest/app/*",
+          "https://app.jpn.pendo.io/in-app-designer/latest/app/*"
+        ],
         "js": ["iframe.js"],
         "all_frames": true
       }

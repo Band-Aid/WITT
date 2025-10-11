@@ -16,10 +16,8 @@ Export / Import captured tags.
   - [ ] use some sort of db to store data instead of localstorage
   - [ ] compress image
 
-- [ ] Clean up code
-  - [ ] it's all over the place
 
 - [ ] Split tag data by Sub ID
-  - [ ] Support Exporting tags but Sub ID
+  - [ ] Support Exporting tags with Sub ID
 
 

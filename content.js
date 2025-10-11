@@ -1,19 +1,3 @@
-// Skip running in iframes (only run in top window)
-if (window.top !== window) {
-  console.log('WITT content script running in iframe; skipping.');
-} else if (document.documentElement.getAttribute('data-witt-initialized') === '1') {
-  console.log('WITT content script already initialized (DOM flag); skipping.');
-} else {
-  // mark DOM so re-injected scripts in the same document don't reinitialize
-  try { document.documentElement.setAttribute('data-witt-initialized', '1'); } catch (e) {}
-  window.__witt_content_initialized = true;
-  console.log('Content script loaded!');
-
-  // simple dedupe map to avoid duplicate insertions: key -> timestamp
-  try { window.__witt_lastInserted = window.__witt_lastInserted || {}; } catch (e) {}
-
-  // debounce map for waitForElement calls to avoid multiple concurrent waiters per selector
-  const __witt_waiting = {};
 
 
 function waitForElement(selector, callback) {
@@ -35,14 +19,18 @@ function waitForElement(selector, callback) {
 
 // Helper: remove any existing injected snapshot(s)
 function removeSnapshotIfPresent(anchor) {
-  // Global class-based removal
-  const existing = document.querySelectorAll('.witt-snapshot');
-  if (existing && existing.length) {
-    existing.forEach((el) => el.remove());
-    console.log('Removed previous injected snapshot(s) by class.');
+  // Remove the deterministic wrapper container if present
+  try {
+    const container = document.getElementById('witt-snapshot-container');
+    if (container) {
+      container.remove();
+      console.log('Removed previous witt snapshot container.');
+    }
+  } catch (e) {
+    // ignore
   }
 
-  // Remove nearby data: images after the anchor if provided, otherwise scan body
+  // Remove any nearby elements that explicitly declare they are our snapshots
   const startNode = anchor || document.body;
   let node = startNode.nextElementSibling || startNode.firstElementChild;
   let checks = 0;
@@ -50,11 +38,8 @@ function removeSnapshotIfPresent(anchor) {
     const next = node.nextElementSibling;
     try {
       if (node.nodeType === 1) {
-        const tag = node.tagName;
-        const src = node.src || (node.getAttribute && node.getAttribute('src'));
-        const isDataImg = tag === 'IMG' && src && src.startsWith && src.startsWith('data:');
-        const hasAttr = node.getAttribute && node.getAttribute('data-witt-snapshot') !== null;
-        if (isDataImg || hasAttr) node.remove();
+        const hasAttr = node.getAttribute && (node.getAttribute('data-witt-snapshot') !== null || node.getAttribute('data-witt-key') !== null);
+        if (hasAttr) node.remove();
       }
     } catch (e) {
       // ignore
@@ -66,6 +51,12 @@ function removeSnapshotIfPresent(anchor) {
 
 // Helper: ensure snapshot is installed for a particular extractedValue
 function ensureSnapshotFor(extractedValue) {
+  // don't attempt to insert for empty/undefined keys (list views like '/features/')
+  if (!extractedValue) {
+    console.log('No extractedValue provided, removing any existing snapshot.');
+    try { removeSnapshotIfPresent(); } catch (e) {}
+    return;
+  }
   // don't run concurrently for the same key
   window.__witt_lastInserted = window.__witt_lastInserted || {};
   if (window.__witt_lastInserted[extractedValue] && Date.now() - window.__witt_lastInserted[extractedValue] < 3000) {
@@ -76,34 +67,46 @@ function ensureSnapshotFor(extractedValue) {
   window.__witt_lastInserted[extractedValue] = Date.now();
 
   waitForElement('.pendo-page-header', (filterBar) => {
-    // If a snapshot for this extractedValue already exists, do nothing
-    const existingForKey = document.querySelector('.witt-snapshot[data-witt-key="' + extractedValue + '"]');
-    if (existingForKey) {
-      console.log('Snapshot already present for', extractedValue);
+    // If a snapshot for this extractedValue already exists in our container, do nothing
+    const existingContainer = document.getElementById('witt-snapshot-container');
+    if (existingContainer && existingContainer.getAttribute('data-witt-key') === extractedValue) {
+      console.log('Snapshot container already present for', extractedValue);
       return;
     }
 
-    // Always remove any existing snapshots adjacent to this anchor first
+    // Remove the previous container (if any) and any explicit snapshot nodes nearby
     removeSnapshotIfPresent(filterBar);
 
     chrome.storage.local.get([extractedValue], (result) => {
-        if (result[extractedValue]) {
-        const img = new Image();
-        img.src = result[extractedValue];
-        img.className = 'witt-snapshot';
-        img.setAttribute('data-witt-snapshot', '1');
-        img.setAttribute('data-witt-key', extractedValue);
-        img.style.maxWidth = '900px';
-        img.style.height = '500px';
-        img.style.display = 'block';
-        img.style.margin = '8px 0';
-        filterBar.insertAdjacentElement('afterend', img);
-        console.log('Snapshot inserted for', extractedValue);
-        } else {
-          console.log('No snapshot found for', extractedValue);
-          // clear timestamp so a future attempt can try again
-          try { delete window.__witt_lastInserted[extractedValue]; } catch (e) {}
+      if (result[extractedValue]) {
+        // create a deterministic wrapper so we can manage the snapshot reliably
+        try {
+          const wrapper = document.createElement('div');
+          wrapper.id = 'witt-snapshot-container';
+          wrapper.setAttribute('data-witt-key', extractedValue);
+          wrapper.style.margin = '8px 0';
+          wrapper.style.display = 'block';
+
+          const img = new Image();
+          img.src = result[extractedValue];
+          img.className = 'witt-snapshot';
+          img.setAttribute('data-witt-snapshot', '1');
+          img.setAttribute('data-witt-key', extractedValue);
+          img.style.maxWidth = '900px';
+          img.style.height = '500px';
+          img.style.display = 'block';
+
+          wrapper.appendChild(img);
+          filterBar.insertAdjacentElement('afterend', wrapper);
+          console.log('Snapshot inserted for', extractedValue);
+        } catch (e) {
+          console.log('Failed to insert snapshot for', extractedValue, e);
         }
+      } else {
+        console.log('No snapshot found for', extractedValue);
+        // clear timestamp so a future attempt can try again
+        try { delete window.__witt_lastInserted[extractedValue]; } catch (e) {}
+      }
     });
   });
 }
@@ -114,19 +117,34 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return;
   }
 
-  const url = new URL(message.url);
-  const pathParts = url.pathname.split('/');
+  // Prefer the actual document URL (location.href) over message.url from background
+  // because the extension was receiving stale/previous URLs from background messages.
+  let msgUrl = null;
+  try { msgUrl = message.url ? new URL(message.url) : null; } catch (e) { msgUrl = null; }
+  const currentUrl = new URL(location.href);
+  console.log('message.url:', msgUrl ? msgUrl.href : null, 'location.href:', currentUrl.href);
+  const pathParts = currentUrl.pathname.split('/');
   if (message.action === 'handlePageLoaded') {
     console.log('Starting load tag screenshot!');
     console.log(message.url);
-    const extractedValue = pathParts[pathParts.indexOf('pages') + 1];
-    ensureSnapshotFor(extractedValue);
+    const extractedValue = pathParts[pathParts.indexOf('pages') + 1] || null;
+    if (!extractedValue) {
+      console.log('Page list view detected, removing snapshot.');
+      removeSnapshotIfPresent();
+    } else {
+      ensureSnapshotFor(extractedValue);
+    }
   } else if (message.action === 'handleFeatureLoaded') {
     console.log('Starting load tag screenshot!');
     console.log(message.url);
-    const extractedValue = pathParts[pathParts.indexOf('features') + 1];
+    const extractedValue = pathParts[pathParts.indexOf('features') + 1] || null;
     console.log(extractedValue);
-    ensureSnapshotFor(extractedValue);
+    if (!extractedValue) {
+      console.log('Features list view detected, removing snapshot.');
+      removeSnapshotIfPresent();
+    } else {
+      ensureSnapshotFor(extractedValue);
+    }
   }
 });
 
@@ -135,17 +153,38 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   const origPush = history.pushState;
   const origReplace = history.replaceState;
   function onUrlChange() {
+    // Immediately remove any existing injected img.witt-snapshot on URL change
+    try {
+      const existingImgs = document.querySelectorAll('img.witt-snapshot');
+      if (existingImgs && existingImgs.length) {
+        existingImgs.forEach((el) => el.remove());
+        console.log('Removed existing img.witt-snapshot on URL change');
+      }
+    } catch (e) {
+      // ignore
+    }
+
     const url = location.href;
     // Send a message to the background or just handle locally: inspect current URL
     try {
       const u = new URL(url);
       const parts = u.pathname.split('/');
       if (parts.includes('pages')) {
-        const extractedValue = parts[parts.indexOf('pages') + 1];
-        ensureSnapshotFor(extractedValue);
+        const extractedValue = parts[parts.indexOf('pages') + 1] || null;
+        if (!extractedValue) {
+          console.log('URL change to pages list detected — removing snapshot.');
+          removeSnapshotIfPresent();
+        } else {
+          ensureSnapshotFor(extractedValue);
+        }
       } else if (parts.includes('features')) {
-        const extractedValue = parts[parts.indexOf('features') + 1];
-        ensureSnapshotFor(extractedValue);
+        const extractedValue = parts[parts.indexOf('features') + 1] || null;
+        if (!extractedValue) {
+          console.log('URL change to features list detected — removing snapshot.');
+          removeSnapshotIfPresent();
+        } else {
+          ensureSnapshotFor(extractedValue);
+        }
       } else {
         // Not a page/feature view — remove any snapshot if present
         removeSnapshotIfPresent();
@@ -166,29 +205,4 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // Run once on load
   setTimeout(onUrlChange, 500);
 })();
-
-}
-
-// MutationObserver to remove reinserted snapshots in real-time
-try {
-  const observer = new MutationObserver((mutations) => {
-    for (const m of mutations) {
-      for (const node of m.addedNodes || []) {
-        try {
-          if (node && node.nodeType === 1) {
-            const el = node;
-            const isWitt = el.matches && (el.matches('.witt-snapshot') || el.getAttribute('data-witt-snapshot') !== null || el.getAttribute('data-witt-key') !== null);
-            const isDataImg = el.tagName === 'IMG' && el.src && el.src.startsWith && el.src.startsWith('data:');
-            if (isWitt || isDataImg) {
-             // el.remove();
-              console.log('MutationObserver removed reinserted snapshot element');
-            }
-          }
-        } catch(e) {}
-      }
-    }
-  });
-  observer.observe(document.body, { childList: true, subtree: true });
-} catch (e) {
-  // ignore
 }
