@@ -1,5 +1,5 @@
 
-// Ensure the waiting map exists (safe for repeated injections)
+// Ensure the waiting map exists - safety for repeated injections
 try {
   var __witt_waiting = window.__witt_waiting = window.__witt_waiting || {};
 } catch (e) {
@@ -23,9 +23,9 @@ function waitForElement(selector, callback) {
   check();
 }
 
-// Helper: remove any existing injected snapshot(s)
+// Helper function: remove any existing injected snapshot(s)
+// Remove the deterministic wrapper container if present
 function removeSnapshotIfPresent(anchor) {
-  // Remove the deterministic wrapper container if present
   try {
     const container = document.getElementById('witt-snapshot-container');
     if (container) {
@@ -36,7 +36,7 @@ function removeSnapshotIfPresent(anchor) {
     // ignore
   }
 
-  // Remove any nearby elements that explicitly declare they are our snapshots
+  // Remove any nearby elements that explicitly decalre WITT snapshot
   const startNode = anchor || document.body;
   let node = startNode.nextElementSibling || startNode.firstElementChild;
   let checks = 0;
@@ -55,7 +55,7 @@ function removeSnapshotIfPresent(anchor) {
   }
 }
 
-// Helper: ensure snapshot is installed for a particular extractedValue
+// Helper function: ensure snapshot is installed for a particular extractedValue
 function ensureSnapshotFor(extractedValue) {
   // don't attempt to insert for empty/undefined keys (list views like '/features/')
   if (!extractedValue) {
@@ -69,7 +69,6 @@ function ensureSnapshotFor(extractedValue) {
     console.log('Recently inserted snapshot for', extractedValue, '- skipping');
     return;
   }
-  // mark pending to avoid concurrent activity
   window.__witt_lastInserted[extractedValue] = Date.now();
 
   waitForElement('.pendo-page-header', (filterBar) => {
@@ -83,28 +82,35 @@ function ensureSnapshotFor(extractedValue) {
     // Remove the previous container (if any) and any explicit snapshot nodes nearby
     removeSnapshotIfPresent(filterBar);
 
-    chrome.storage.local.get([extractedValue], (result) => {
-      if (result[extractedValue]) {
-        // create a deterministic wrapper so we can manage the snapshot reliably
+    // Try to detect a subscription id from the URL context
+    const urlParts = new URL(location.href).pathname.split('/');
+    const subsid = urlParts[urlParts.indexOf('s') + 1] || null;
+    const compoundKey = subsid ? `${subsid}:${extractedValue}` : extractedValue;
+    chrome.storage.local.get([compoundKey, extractedValue], (result) => {
+      const stored = result[compoundKey] || result[extractedValue];
+      if (stored) {
         try {
           const wrapper = document.createElement('div');
           wrapper.id = 'witt-snapshot-container';
           wrapper.setAttribute('data-witt-key', extractedValue);
+          if (subsid) wrapper.setAttribute('data-witt-subsid', subsid);
           wrapper.style.margin = '8px 0';
           wrapper.style.display = 'block';
 
           const img = new Image();
-          img.src = result[extractedValue];
+          const snapshotSrc = (typeof stored === 'string') ? stored : (stored.snapshot || '');
+          img.src = snapshotSrc;
           img.className = 'witt-snapshot';
           img.setAttribute('data-witt-snapshot', '1');
           img.setAttribute('data-witt-key', extractedValue);
+          if (subsid) img.setAttribute('data-witt-subsid', subsid);
           img.style.maxWidth = '900px';
           img.style.height = '500px';
           img.style.display = 'block';
 
           wrapper.appendChild(img);
           filterBar.insertAdjacentElement('afterend', wrapper);
-          console.log('Snapshot inserted for', extractedValue);
+          console.log('Snapshot inserted for', extractedValue, 'subsid:', subsid);
         } catch (e) {
           console.log('Failed to insert snapshot for', extractedValue, e);
         }
@@ -160,6 +166,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   const origReplace = history.replaceState;
   function onUrlChange() {
     // Immediately remove any existing injected img.witt-snapshot on URL change
+    // Potential race condition if the new URL also wants to show a snapshot : TODO
     try {
       const existingImgs = document.querySelectorAll('img.witt-snapshot');
       if (existingImgs && existingImgs.length) {
@@ -171,7 +178,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
 
     const url = location.href;
-    // Send a message to the background or just handle locally: inspect current URL
+    // Send a message to the background : inspect current URL
     try {
       const u = new URL(url);
       const parts = u.pathname.split('/');
@@ -192,7 +199,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           ensureSnapshotFor(extractedValue);
         }
       } else {
-        // Not a page/feature view — remove any snapshot if present
         removeSnapshotIfPresent();
       }
     } catch (e) {

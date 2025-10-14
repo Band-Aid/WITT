@@ -1,64 +1,53 @@
-function captureSnapShot(id) {
+function captureSnapShot(subsid, id) {
   chrome.tabs.captureVisibleTab(null, { format: 'png' }, (dataUrl) => {
     if (chrome.runtime.lastError) {
       console.error('Error capturing snapshot:', chrome.runtime.lastError);
       return;
     }
     console.log('Snapshot taken!');
+    // Use a subsid key to avoid collisions across subscriptions
+    const key = `${subsid}:${id}`;
+    const value = { subsid: subsid, id: id, snapshot: dataUrl };
     // Save to storage
-    chrome.storage.local.set({ [id]: dataUrl }, () => {
-      console.log('Snapshot saved to storage.');
+    chrome.storage.local.set({ [key]: value }, () => {
+      console.log('Snapshot saved to storage under', key);
     });
   });
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.action === 'tagFeatureClicked') {
-    console.log('Feature tagged!', message.element);
+  if (message.action === 'tagButtonClicked') {
+    console.log('Tag button clicked!', message.element, 'origin:', message.origin || null);
 
-    console.log('Adding one-time webRequest listener for feature apply');
+    console.log('Adding one-time webRequest listener for apply (page or feature)');
     // create a one-time listener that removes itself after the first match
-    const featureListener = (details) => {
+    const applyListener = (details) => {
       try {
-        const url = new URL(details.url);
+        let url;
+        try { url = new URL(details.url); } catch (err) { url = null; }
+        if (!url) return;
         const pathParts = url.pathname.split('/');
+
+        // Determine whether this is a page or feature apply
         if (pathParts.includes('feature')) {
           const extractedValue = pathParts[pathParts.indexOf('feature') + 1];
-          console.log('Feature Path Value:', extractedValue);
-          captureSnapShot(extractedValue);
-        }
-      } finally {
-        try { chrome.webRequest.onBeforeRequest.removeListener(featureListener); } catch(e) {}
-      }
-    };
-    chrome.webRequest.onBeforeRequest.addListener(
-      featureListener,
-      { urls: [
-          "https://app.pendo.io/api/s/*/page/*/apply",
-          "https://app.pendo.io/api/s/*/feature/*/apply",
-          "https://app.jpn.pendo.io/api/s/*/page/*/apply",
-          "https://app.jpn.pendo.io/api/s/*/feature/*/apply"
-        ] }
-    );
-
-  } else if (message.action === 'tagPageClicked') {
-    console.log('Page tagged', message.element);
-    console.log('Adding one-time webRequest listener for page apply');
-    const pageListener = (details) => {
-      try {
-        const url = new URL(details.url);
-        const pathParts = url.pathname.split('/');
-        if (pathParts.includes('page')) {
+          const subsid = pathParts[pathParts.indexOf('s') + 1] || null;
+          console.log('Detected feature apply. featureId:', extractedValue, 'subsid:', subsid);
+          captureSnapShot(subsid, extractedValue);
+        } else if (pathParts.includes('page')) {
           const extractedValue = pathParts[pathParts.indexOf('page') + 1];
-          console.log('Feature page Value:', extractedValue);
-          captureSnapShot(extractedValue);
+          const subsid = pathParts[pathParts.indexOf('s') + 1] || null;
+          console.log('Detected page apply. pageId:', extractedValue, 'subsid:', subsid);
+          captureSnapShot(subsid, extractedValue);
+        } else {
+          console.log('Apply request did not include page or feature in path:', details.url);
         }
       } finally {
-        try { chrome.webRequest.onBeforeRequest.removeListener(pageListener); } catch(e) {}
+        try { chrome.webRequest.onBeforeRequest.removeListener(applyListener); } catch(e) {}
       }
     };
     chrome.webRequest.onBeforeRequest.addListener(
-      pageListener,
+      applyListener,
       { urls: [
           "https://app.pendo.io/api/s/*/page/*/apply",
           "https://app.pendo.io/api/s/*/feature/*/apply",
@@ -78,7 +67,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         console.error('Active tab does not have an id.');
         return;
       }
-      // Ensure content script is injected before messaging
+      // ensure content script is injected before messaging
       injectContentScriptIfNeeded(activeTab.id, () => {
         try {
           chrome.tabs.sendMessage(activeTab.id, {
@@ -110,9 +99,8 @@ function injectContentScriptIfNeeded(tabId, callback) {
   });
 }
 
-
 chrome.webNavigation.onCompleted.addListener((details) => {
-  //console.log('Navigation completed:', details.url);
+  //debug: console.log('Navigation completed:', details.url);
   const url = new URL(details.url);
   const pagesPattern = /^https:\/\/(?:app|app\.jpn)\.pendo\.io\/s\/[^\/]+\/pages\/[^\/]+/;
   const featuresPattern = /^https:\/\/(?:app|app\.jpn)\.pendo\.io\/s\/[^\/]+\/features\/[^\/]+/;

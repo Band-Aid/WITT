@@ -59,7 +59,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
             tdKey.textContent = key;
             tdKey.id = key;
-            img.src = value;
+            img.src = (typeof value === 'string') ? value : (value && value.snapshot) ? value.snapshot : '';
             img.alt = key;
             img.style.maxWidth = '500px'; // Limit the image size
             tdValue.appendChild(img);

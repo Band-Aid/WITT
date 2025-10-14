@@ -6,36 +6,36 @@ function waitForElement(selector, callback) {
 }
 
 function attachListeners() {
-    waitForElement('.tagged-page-view [data-cy="done-button"]', (tagPageBtn) => {
-        if (!tagPageBtn.classList.contains('listener-attached')) {
-            console.log('Tag Page button found!');
-            tagPageBtn.addEventListener('click', () => {
-                console.log('Tag Page button clicked!');
-                chrome.runtime.sendMessage({ action: 'tagPageClicked' });
-            });
-            tagPageBtn.classList.add('listener-attached');
-        }
-    });
+    // waitForElement('.tagged-page-view [data-cy="done-button"]', (tagPageBtn) => {
+    //     if (!tagPageBtn.classList.contains('listener-attached')) {
+    //         console.log('Tag Page button found!');
+    //         tagPageBtn.addEventListener('click', () => {
+    //             console.log('Tag Page button clicked!');
+    //             chrome.runtime.sendMessage({ action: 'tagPageClicked' });
+    //         });
+    //         tagPageBtn.classList.add('listener-attached');
+    //     }
+    // });
 
-    waitForElement('.feature-create-view [data-cy="done-button"]', (tagFeatureBtn) => {
-        if (!tagFeatureBtn.classList.contains('listener-attached')) {
-            console.log('Tag Feature button found!');
-            tagFeatureBtn.addEventListener('click', () => {
-                console.log('Tag Feature button clicked!');
-                chrome.runtime.sendMessage({ action: 'tagFeatureClicked' });
-            });
-            tagFeatureBtn.classList.add('listener-attached');
-        }
-    });
+    // waitForElement('.feature-create-view [data-cy="done-button"]', (tagFeatureBtn) => {
+    //     if (!tagFeatureBtn.classList.contains('listener-attached')) {
+    //         console.log('Tag Feature button found!');
+    //         tagFeatureBtn.addEventListener('click', () => {
+    //             console.log('Tag Feature button clicked!');
+    //             chrome.runtime.sendMessage({ action: 'tagFeatureClicked' });
+    //         });
+    //         tagFeatureBtn.classList.add('listener-attached');
+    //     }
+    // });
 
-    waitForElement('[type="feature"] [pendo-analytics="components:button:save-changes"]', (saveFeatureBtn) => {
-        if (!saveFeatureBtn.classList.contains('listener-attached')) {
-            console.log('Save Feature button found!');
-            saveFeatureBtn.addEventListener('click', () => {
-                console.log('Save Feature button clicked!');
-                chrome.runtime.sendMessage({ action: 'tagFeatureClicked' });
+    waitForElement('[pendo-analytics^="components:button:save"]', (saveTagBtn) => {
+        if (!saveTagBtn.classList.contains('listener-attached')) {
+            console.log('Save Tag button found!');
+            saveTagBtn.addEventListener('click', () => {
+                console.log('Save Tag button clicked!');
+                chrome.runtime.sendMessage({ action: 'tagButtonClicked' });
             });
-            saveFeatureBtn.classList.add('listener-attached');
+            saveTagBtn.classList.add('listener-attached');
         }
     });
 }
@@ -58,5 +58,4 @@ const observer = new MutationObserver((mutations) => {
     
 });
 
-// Start observing the document body for changes
 observer.observe(document.body, { childList: true, subtree: true });
