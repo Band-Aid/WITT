@@ -1,4 +1,10 @@
 
+// Ensure the waiting map exists (safe for repeated injections)
+try {
+  var __witt_waiting = window.__witt_waiting = window.__witt_waiting || {};
+} catch (e) {
+  var __witt_waiting = __witt_waiting || {};
+}
 
 function waitForElement(selector, callback) {
   if (__witt_waiting[selector]) return; // already waiting
@@ -205,4 +211,3 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // Run once on load
   setTimeout(onUrlChange, 500);
 })();
-}
